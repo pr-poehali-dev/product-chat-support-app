@@ -1,605 +1,537 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
-interface Product {
+interface Employee {
   id: number;
   name: string;
-  price: number;
-  category: string;
-  image: string;
-  inStock: boolean;
+  position: string;
+  avatar: string;
+  status: 'online' | 'offline' | 'away';
+  email: string;
+  phone: string;
+  department: string;
+  joinDate: string;
 }
 
-interface CartItem extends Product {
-  quantity: number;
-}
-
-interface Order {
-  id: string;
-  status: 'processing' | 'shipped' | 'in_transit' | 'delivered';
-  trackingNumber: string;
-  items: CartItem[];
-  total: number;
-  estimatedDelivery: string;
-}
-
-interface Message {
+interface ChatMessage {
   id: number;
   text: string;
-  sender: 'user' | 'support';
+  senderId: number;
   timestamp: string;
+  edited?: boolean;
+  attachments?: { type: 'image' | 'file'; name: string; url: string; }[];
+}
+
+interface Chat {
+  employeeId: number;
+  messages: ChatMessage[];
 }
 
 const Index = () => {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [currentSection, setCurrentSection] = useState<'catalog' | 'orders' | 'cart' | 'chat' | 'profile' | 'notifications' | 'payments' | 'favorites'>('catalog');
-  const [cartOpen, setCartOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [favorites, setFavorites] = useState<number[]>([]);
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: 'Здравствуйте! Чем могу помочь?', sender: 'support', timestamp: '14:30' }
+  const currentUserId = 1;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const [employees, setEmployees] = useState<Employee[]>([
+    { id: 1, name: 'Анна Смирнова', position: 'Директор', avatar: '👩‍💼', status: 'online', email: 'anna@company.ru', phone: '+7 (999) 111-11-11', department: 'Управление', joinDate: '01.01.2020' },
+    { id: 2, name: 'Дмитрий Козлов', position: 'Менеджер по продажам', avatar: '👨‍💼', status: 'online', email: 'dmitry@company.ru', phone: '+7 (999) 222-22-22', department: 'Продажи', joinDate: '15.03.2021' },
+    { id: 3, name: 'Елена Петрова', position: 'Бухгалтер', avatar: '👩‍💻', status: 'away', email: 'elena@company.ru', phone: '+7 (999) 333-33-33', department: 'Финансы', joinDate: '10.06.2021' },
+    { id: 4, name: 'Игорь Морозов', position: 'Специалист поддержки', avatar: '👨‍🔧', status: 'online', email: 'igor@company.ru', phone: '+7 (999) 444-44-44', department: 'Поддержка', joinDate: '20.09.2022' },
+    { id: 5, name: 'Ольга Волкова', position: 'HR-менеджер', avatar: '👩‍🎓', status: 'offline', email: 'olga@company.ru', phone: '+7 (999) 555-55-55', department: 'HR', joinDate: '05.02.2023' },
   ]);
-  const [newMessage, setNewMessage] = useState('');
 
-  const products: Product[] = [
-    { id: 1, name: 'Беспроводные наушники Pro', price: 12990, category: 'Электроника', image: '🎧', inStock: true },
-    { id: 2, name: 'Умные часы X5', price: 24990, category: 'Гаджеты', image: '⌚', inStock: true },
-    { id: 3, name: 'Портативная колонка Bass', price: 5990, category: 'Аудио', image: '🔊', inStock: true },
-    { id: 4, name: 'Игровая мышь RGB', price: 3490, category: 'Компьютеры', image: '🖱️', inStock: true },
-    { id: 5, name: 'Механическая клавиатура', price: 8990, category: 'Компьютеры', image: '⌨️', inStock: false },
-    { id: 6, name: 'Веб-камера HD Pro', price: 6990, category: 'Компьютеры', image: '📷', inStock: true },
-  ];
-
-  const orders: Order[] = [
+  const [chats, setChats] = useState<Chat[]>([
     {
-      id: 'ORD-2024-001',
-      status: 'in_transit',
-      trackingNumber: 'TR1234567890',
-      items: [
-        { ...products[0], quantity: 1 }
-      ],
-      total: 12990,
-      estimatedDelivery: '15 января 2026'
+      employeeId: 2,
+      messages: [
+        { id: 1, text: 'Привет! Как дела с новым клиентом?', senderId: 2, timestamp: '10:30' },
+        { id: 2, text: 'Отлично! Подписали договор вчера', senderId: 1, timestamp: '10:32' },
+        { id: 3, text: 'Супер! Отправлю документы на email', senderId: 2, timestamp: '10:35' },
+      ]
+    },
+    {
+      employeeId: 3,
+      messages: [
+        { id: 1, text: 'Добрый день! Нужны счета за декабрь', senderId: 1, timestamp: '09:15' },
+        { id: 2, text: 'Здравствуйте! Сейчас подготовлю, отправлю через час', senderId: 3, timestamp: '09:20' },
+      ]
     }
-  ];
+  ]);
 
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(2);
+  const [newMessage, setNewMessage] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<Employee | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteCode] = useState('TEAM-2026-' + Math.random().toString(36).substr(2, 6).toUpperCase());
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  const addToCart = (product: Product) => {
-    const existing = cart.find(item => item.id === product.id);
-    if (existing) {
-      setCart(cart.map(item => 
-        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-      ));
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
-    }
-  };
-
-  const removeFromCart = (productId: number) => {
-    setCart(cart.filter(item => item.id !== productId));
-  };
-
-  const toggleFavorite = (productId: number) => {
-    if (favorites.includes(productId)) {
-      setFavorites(favorites.filter(id => id !== productId));
-    } else {
-      setFavorites([...favorites, productId]);
-    }
-  };
+  const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
+  const currentChat = chats.find(c => c.employeeId === selectedEmployeeId);
 
   const sendMessage = () => {
-    if (newMessage.trim()) {
-      setMessages([...messages, {
-        id: messages.length + 1,
-        text: newMessage,
-        sender: 'user',
-        timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-      }]);
-      setNewMessage('');
-      
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          id: prev.length + 1,
-          text: 'Спасибо за сообщение! Наш специалист ответит в ближайшее время.',
-          sender: 'support',
-          timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-        }]);
-      }, 1000);
+    if (!newMessage.trim() || !selectedEmployeeId) return;
+
+    const newMsg: ChatMessage = {
+      id: Date.now(),
+      text: newMessage,
+      senderId: currentUserId,
+      timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setChats(prev => {
+      const existingChat = prev.find(c => c.employeeId === selectedEmployeeId);
+      if (existingChat) {
+        return prev.map(c => 
+          c.employeeId === selectedEmployeeId 
+            ? { ...c, messages: [...c.messages, newMsg] }
+            : c
+        );
+      } else {
+        return [...prev, { employeeId: selectedEmployeeId, messages: [newMsg] }];
+      }
+    });
+
+    setNewMessage('');
+  };
+
+  const editMessage = (messageId: number) => {
+    if (!editingText.trim()) return;
+
+    setChats(prev => prev.map(chat => ({
+      ...chat,
+      messages: chat.messages.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, text: editingText, edited: true }
+          : msg
+      )
+    })));
+
+    setEditingMessageId(null);
+    setEditingText('');
+  };
+
+  const deleteMessage = (messageId: number) => {
+    setChats(prev => prev.map(chat => ({
+      ...chat,
+      messages: chat.messages.filter(msg => msg.id !== messageId)
+    })));
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file') => {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !selectedEmployeeId) return;
+
+    const file = files[0];
+    const attachment = {
+      type,
+      name: file.name,
+      url: URL.createObjectURL(file)
+    };
+
+    const newMsg: ChatMessage = {
+      id: Date.now(),
+      text: type === 'image' ? '📷 Изображение' : '📎 ' + file.name,
+      senderId: currentUserId,
+      timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      attachments: [attachment]
+    };
+
+    setChats(prev => {
+      const existingChat = prev.find(c => c.employeeId === selectedEmployeeId);
+      if (existingChat) {
+        return prev.map(c => 
+          c.employeeId === selectedEmployeeId 
+            ? { ...c, messages: [...c.messages, newMsg] }
+            : c
+        );
+      } else {
+        return [...prev, { employeeId: selectedEmployeeId, messages: [newMsg] }];
+      }
+    });
+  };
+
+  const openProfile = (employee: Employee) => {
+    setSelectedProfile(employee);
+    setProfileDialogOpen(true);
+  };
+
+  const getStatusColor = (status: Employee['status']) => {
+    switch (status) {
+      case 'online': return 'bg-green-500';
+      case 'away': return 'bg-yellow-500';
+      case 'offline': return 'bg-gray-400';
+      default: return 'bg-gray-400';
     }
   };
 
-  const getStatusProgress = (status: Order['status']) => {
+  const getStatusText = (status: Employee['status']) => {
     switch (status) {
-      case 'processing': return 25;
-      case 'shipped': return 50;
-      case 'in_transit': return 75;
-      case 'delivered': return 100;
-      default: return 0;
-    }
-  };
-
-  const getStatusText = (status: Order['status']) => {
-    switch (status) {
-      case 'processing': return 'Обрабатывается';
-      case 'shipped': return 'Отправлен';
-      case 'in_transit': return 'В пути';
-      case 'delivered': return 'Доставлен';
+      case 'online': return 'В сети';
+      case 'away': return 'Отошёл';
+      case 'offline': return 'Не в сети';
       default: return 'Неизвестно';
     }
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const filteredEmployees = employees.filter(emp => 
+    emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.department.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
-      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="text-2xl">🛍️</div>
-            <h1 className="text-xl font-semibold">ShopHub</h1>
-          </div>
-          
-          <nav className="hidden md:flex items-center gap-1">
-            {[
-              { id: 'catalog', label: 'Каталог', icon: 'Store' },
-              { id: 'orders', label: 'Заказы', icon: 'Package' },
-              { id: 'favorites', label: 'Избранное', icon: 'Heart' },
-              { id: 'notifications', label: 'Уведомления', icon: 'Bell' },
-              { id: 'payments', label: 'Платежи', icon: 'CreditCard' },
-              { id: 'profile', label: 'Профиль', icon: 'User' },
-            ].map(section => (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      <div className="flex h-screen">
+        <aside className="w-80 bg-white border-r flex flex-col">
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="text-2xl">💬</div>
+                <h1 className="text-xl font-bold text-gray-900">TeamChat</h1>
+              </div>
               <Button
-                key={section.id}
-                variant={currentSection === section.id ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setCurrentSection(section.id as any)}
-                className="gap-2"
-              >
-                <Icon name={section.icon as any} size={16} />
-                <span className="hidden lg:inline">{section.label}</span>
-              </Button>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="hover-scale"
-            >
-              <Icon name={theme === 'light' ? 'Moon' : 'Sun'} size={20} />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setChatOpen(true)}
-              className="hover-scale relative"
-            >
-              <Icon name="MessageCircle" size={20} />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-                2
-              </span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCartOpen(true)}
-              className="hover-scale relative"
-            >
-              <Icon name="ShoppingCart" size={20} />
-              {cartItemsCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-xs font-medium text-primary-foreground flex items-center justify-center">
-                  {cartItemsCount}
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        <div className="md:hidden border-t">
-          <div className="container flex items-center justify-around py-2 px-4">
-            {[
-              { id: 'catalog', icon: 'Store' },
-              { id: 'orders', icon: 'Package' },
-              { id: 'favorites', icon: 'Heart' },
-              { id: 'profile', icon: 'User' },
-            ].map(section => (
-              <Button
-                key={section.id}
-                variant={currentSection === section.id ? 'default' : 'ghost'}
                 size="icon"
-                onClick={() => setCurrentSection(section.id as any)}
+                variant="ghost"
+                onClick={() => setInviteDialogOpen(true)}
+                className="hover-scale"
               >
-                <Icon name={section.icon as any} size={20} />
+                <Icon name="UserPlus" size={20} />
               </Button>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      <main className="container py-6 px-4 animate-fade-in">
-        {currentSection === 'catalog' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-bold">Каталог товаров</h2>
-              <Badge variant="secondary" className="text-sm">
-                {products.length} товаров
-              </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map(product => (
-                <Card key={product.id} className="overflow-hidden animate-scale-in hover-scale">
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="text-6xl">{product.image}</div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => toggleFavorite(product.id)}
-                        className={favorites.includes(product.id) ? 'text-red-500' : ''}
-                      >
-                        <Icon name="Heart" size={20} fill={favorites.includes(product.id) ? 'currentColor' : 'none'} />
-                      </Button>
-                    </div>
-                    
-                    <div>
-                      <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
-                      <Badge variant="outline" className="text-xs">{product.category}</Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-2xl font-bold">{product.price.toLocaleString('ru-RU')} ₽</span>
-                      <Button
-                        onClick={() => addToCart(product)}
-                        disabled={!product.inStock}
-                        size="sm"
-                      >
-                        <Icon name="ShoppingCart" size={16} className="mr-1" />
-                        {product.inStock ? 'В корзину' : 'Нет в наличии'}
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+            <div className="relative">
+              <Icon name="Search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Поиск сотрудников..."
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
-        )}
 
-        {currentSection === 'orders' && (
-          <div className="space-y-6">
-            <h2 className="text-3xl font-bold">Мои заказы</h2>
-
-            {orders.map(order => (
-              <Card key={order.id} className="p-6 space-y-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold text-lg">Заказ {order.id}</h3>
-                    <p className="text-sm text-muted-foreground">Трек-номер: {order.trackingNumber}</p>
-                  </div>
-                  <Badge className="text-sm">{getStatusText(order.status)}</Badge>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Статус доставки</span>
-                    <span className="font-medium">Ожидаемая дата: {order.estimatedDelivery}</span>
-                  </div>
-                  <Progress value={getStatusProgress(order.status)} className="h-3" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Обработка</span>
-                    <span>Отправлен</span>
-                    <span>В пути</span>
-                    <span>Доставлен</span>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4 space-y-3">
-                  {order.items.map(item => (
-                    <div key={item.id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="text-3xl">{item.image}</div>
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">Количество: {item.quantity}</p>
-                        </div>
-                      </div>
-                      <span className="font-semibold">{item.price.toLocaleString('ru-RU')} ₽</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t pt-4 flex justify-between items-center">
-                  <span className="text-lg font-semibold">Итого:</span>
-                  <span className="text-2xl font-bold">{order.total.toLocaleString('ru-RU')} ₽</span>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {currentSection === 'favorites' && (
-          <div className="space-y-6">
-            <h2 className="text-3xl font-bold">Избранное</h2>
-
-            {favorites.length === 0 ? (
-              <Card className="p-12 text-center space-y-4">
-                <Icon name="Heart" size={48} className="mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Вы ещё не добавили товары в избранное</p>
-                <Button onClick={() => setCurrentSection('catalog')}>Перейти в каталог</Button>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.filter(p => favorites.includes(p.id)).map(product => (
-                  <Card key={product.id} className="overflow-hidden animate-scale-in hover-scale">
-                    <div className="p-6 space-y-4">
-                      <div className="flex items-start justify-between">
-                        <div className="text-6xl">{product.image}</div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleFavorite(product.id)}
-                          className="text-red-500"
-                        >
-                          <Icon name="Heart" size={20} fill="currentColor" />
-                        </Button>
-                      </div>
-                      
-                      <div>
-                        <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
-                        <Badge variant="outline" className="text-xs">{product.category}</Badge>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="text-2xl font-bold">{product.price.toLocaleString('ru-RU')} ₽</span>
-                        <Button onClick={() => addToCart(product)} size="sm">
-                          <Icon name="ShoppingCart" size={16} className="mr-1" />
-                          В корзину
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {currentSection === 'profile' && (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <h2 className="text-3xl font-bold">Профиль</h2>
-
-            <Card className="p-6 space-y-6">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarFallback className="text-2xl">АП</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-xl font-semibold">Алексей Петров</h3>
-                  <p className="text-muted-foreground">alexey@example.com</p>
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-4 border-t">
-                <div className="grid gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Имя</label>
-                    <Input defaultValue="Алексей" className="mt-1" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Фамилия</label>
-                    <Input defaultValue="Петров" className="mt-1" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Email</label>
-                    <Input defaultValue="alexey@example.com" className="mt-1" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Телефон</label>
-                    <Input defaultValue="+7 (999) 123-45-67" className="mt-1" />
-                  </div>
-                </div>
-
-                <Button className="w-full">Сохранить изменения</Button>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {currentSection === 'notifications' && (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <h2 className="text-3xl font-bold">Уведомления</h2>
-
-            <Card className="divide-y">
-              {[
-                { icon: 'Package', title: 'Заказ отправлен', text: 'Ваш заказ ORD-2024-001 был отправлен', time: '2 часа назад' },
-                { icon: 'Tag', title: 'Новая акция', text: 'Скидка 20% на всю электронику до конца недели', time: '5 часов назад' },
-                { icon: 'Bell', title: 'Товар в наличии', text: 'Механическая клавиатура снова в продаже', time: '1 день назад' },
-              ].map((notification, idx) => (
-                <div key={idx} className="p-4 flex gap-4 hover:bg-accent/50 transition-colors">
-                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Icon name={notification.icon as any} size={20} className="text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold">{notification.title}</p>
-                    <p className="text-sm text-muted-foreground">{notification.text}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
-                  </div>
-                </div>
-              ))}
-            </Card>
-          </div>
-        )}
-
-        {currentSection === 'payments' && (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <h2 className="text-3xl font-bold">Способы оплаты</h2>
-
-            <Card className="p-6 space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Icon name="CreditCard" size={24} className="text-primary" />
-                  <div>
-                    <p className="font-medium">•••• 4242</p>
-                    <p className="text-sm text-muted-foreground">Visa</p>
-                  </div>
-                </div>
-                <Badge>Основная</Badge>
-              </div>
-
-              <Button variant="outline" className="w-full">
-                <Icon name="Plus" size={16} className="mr-2" />
-                Добавить карту
-              </Button>
-            </Card>
-
-            <Card className="p-6 space-y-4">
-              <h3 className="font-semibold">История платежей</h3>
-              <div className="space-y-3">
-                {[
-                  { date: '10 янв 2026', amount: 12990, status: 'Успешно' },
-                  { date: '05 янв 2026', amount: 5990, status: 'Успешно' },
-                ].map((payment, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{payment.amount.toLocaleString('ru-RU')} ₽</p>
-                      <p className="text-sm text-muted-foreground">{payment.date}</p>
-                    </div>
-                    <Badge variant="outline">{payment.status}</Badge>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        )}
-      </main>
-
-      <Sheet open={cartOpen} onOpenChange={setCartOpen}>
-        <SheetContent className="w-full sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Icon name="ShoppingCart" size={24} />
-              Корзина
-            </SheetTitle>
-          </SheetHeader>
-
-          <div className="mt-8 space-y-4">
-            {cart.length === 0 ? (
-              <div className="text-center py-12 space-y-4">
-                <Icon name="ShoppingCart" size={48} className="mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Корзина пуста</p>
-                <Button onClick={() => { setCartOpen(false); setCurrentSection('catalog'); }}>
-                  Перейти в каталог
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                  {cart.map(item => (
-                    <Card key={item.id} className="p-4">
-                      <div className="flex gap-4">
-                        <div className="text-4xl">{item.image}</div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold">{item.name}</h4>
-                          <p className="text-sm text-muted-foreground">Количество: {item.quantity}</p>
-                          <p className="font-semibold mt-2">{(item.price * item.quantity).toLocaleString('ru-RU')} ₽</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeFromCart(item.id)}
-                        >
-                          <Icon name="Trash2" size={16} />
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-
-                <div className="border-t pt-4 space-y-4">
-                  <div className="flex justify-between text-lg font-semibold">
-                    <span>Итого:</span>
-                    <span>{cartTotal.toLocaleString('ru-RU')} ₽</span>
-                  </div>
-                  <Button className="w-full" size="lg">
-                    Оформить заказ
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={chatOpen} onOpenChange={setChatOpen}>
-        <SheetContent className="w-full sm:max-w-lg flex flex-col">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Icon name="MessageCircle" size={24} />
-              Чат поддержки
-            </SheetTitle>
-          </SheetHeader>
-
-          <div className="flex-1 mt-8 space-y-4 overflow-y-auto">
-            {messages.map(message => (
-              <div
-                key={message.id}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                    message.sender === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+          <ScrollArea className="flex-1">
+            <div className="p-2 space-y-1">
+              {filteredEmployees.map(employee => (
+                <button
+                  key={employee.id}
+                  onClick={() => setSelectedEmployeeId(employee.id)}
+                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all hover-scale ${
+                    selectedEmployeeId === employee.id 
+                      ? 'bg-purple-100 shadow-sm' 
+                      : 'hover:bg-gray-50'
                   }`}
                 >
-                  <p className="text-sm">{message.text}</p>
-                  <p className={`text-xs mt-1 ${
-                    message.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                  }`}>
-                    {message.timestamp}
+                  <div className="relative">
+                    <div className="text-3xl">{employee.avatar}</div>
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(employee.status)}`} />
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-semibold text-sm text-gray-900 truncate">{employee.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{employee.position}</p>
+                  </div>
+                  {currentChat && currentChat.messages.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {currentChat.messages.length}
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </aside>
+
+        <main className="flex-1 flex flex-col bg-gray-50">
+          {selectedEmployee ? (
+            <>
+              <header className="bg-white border-b p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="text-4xl">{selectedEmployee.avatar}</div>
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${getStatusColor(selectedEmployee.status)}`} />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-lg text-gray-900">{selectedEmployee.name}</h2>
+                    <p className="text-sm text-gray-500">{getStatusText(selectedEmployee.status)} • {selectedEmployee.position}</p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openProfile(selectedEmployee)}
+                  className="gap-2"
+                >
+                  <Icon name="Info" size={18} />
+                  Профиль
+                </Button>
+              </header>
+
+              <ScrollArea className="flex-1 p-6">
+                <div className="max-w-3xl mx-auto space-y-4">
+                  {currentChat?.messages.map(message => {
+                    const isOwn = message.senderId === currentUserId;
+                    const sender = employees.find(e => e.id === message.senderId);
+
+                    return (
+                      <div key={message.id} className={`flex gap-3 animate-fade-in ${isOwn ? 'flex-row-reverse' : ''}`}>
+                        <div className="text-2xl flex-shrink-0">{sender?.avatar}</div>
+                        
+                        <div className={`flex-1 ${isOwn ? 'flex justify-end' : ''}`}>
+                          <div className={`inline-block max-w-md ${isOwn ? 'bg-purple-600 text-white' : 'bg-white border'} rounded-2xl p-4 shadow-sm`}>
+                            {editingMessageId === message.id ? (
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={editingText}
+                                  onChange={(e) => setEditingText(e.target.value)}
+                                  className="min-h-[60px]"
+                                  autoFocus
+                                />
+                                <div className="flex gap-2">
+                                  <Button size="sm" onClick={() => editMessage(message.id)}>
+                                    Сохранить
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingMessageId(null)}>
+                                    Отмена
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                                
+                                {message.attachments && message.attachments.map((att, idx) => (
+                                  <div key={idx} className="mt-2">
+                                    {att.type === 'image' ? (
+                                      <img src={att.url} alt={att.name} className="rounded-lg max-w-xs" />
+                                    ) : (
+                                      <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                                        <Icon name="File" size={20} />
+                                        <span className="text-xs">{att.name}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+
+                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/20">
+                                  <span className={`text-xs ${isOwn ? 'text-purple-200' : 'text-gray-500'}`}>
+                                    {message.timestamp}
+                                    {message.edited && ' • изменено'}
+                                  </span>
+                                  
+                                  {isOwn && (
+                                    <div className="flex gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6"
+                                        onClick={() => {
+                                          setEditingMessageId(message.id);
+                                          setEditingText(message.text);
+                                        }}
+                                      >
+                                        <Icon name="Pencil" size={12} />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6"
+                                        onClick={() => deleteMessage(message.id)}
+                                      >
+                                        <Icon name="Trash2" size={12} />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+
+              <div className="bg-white border-t p-4">
+                <div className="max-w-3xl mx-auto">
+                  <div className="flex items-end gap-2">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileUpload(e, 'image')}
+                    />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => handleFileUpload(e, 'file')}
+                    />
+
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => imageInputRef.current?.click()}
+                      className="flex-shrink-0"
+                    >
+                      <Icon name="Image" size={20} />
+                    </Button>
+
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-shrink-0"
+                    >
+                      <Icon name="Paperclip" size={20} />
+                    </Button>
+
+                    <Textarea
+                      placeholder="Введите сообщение..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          sendMessage();
+                        }
+                      }}
+                      className="flex-1 min-h-[44px] max-h-[120px] resize-none"
+                    />
+
+                    <Button
+                      size="icon"
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim()}
+                      className="flex-shrink-0 h-11 w-11"
+                    >
+                      <Icon name="Send" size={20} />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Enter — отправить, Shift+Enter — новая строка
                   </p>
                 </div>
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="text-6xl">💬</div>
+                <h3 className="text-xl font-semibold text-gray-700">Выберите сотрудника</h3>
+                <p className="text-gray-500">Начните общение с коллегами</p>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
-          <div className="border-t pt-4 flex gap-2">
-            <Input
-              placeholder="Введите сообщение..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            />
-            <Button onClick={sendMessage} size="icon">
-              <Icon name="Send" size={20} />
-            </Button>
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Профиль сотрудника</DialogTitle>
+          </DialogHeader>
+
+          {selectedProfile && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="text-6xl">{selectedProfile.avatar}</div>
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${getStatusColor(selectedProfile.status)}`} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">{selectedProfile.name}</h3>
+                  <p className="text-gray-600">{selectedProfile.position}</p>
+                  <Badge variant="outline" className="mt-1">{getStatusText(selectedProfile.status)}</Badge>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="font-medium">{selectedProfile.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Телефон</p>
+                  <p className="font-medium">{selectedProfile.phone}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Отдел</p>
+                  <p className="font-medium">{selectedProfile.department}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Дата присоединения</p>
+                  <p className="font-medium">{selectedProfile.joinDate}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Пригласить в команду</DialogTitle>
+            <DialogDescription>
+              Отправьте этот код новому сотруднику для присоединения
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Card className="p-6 bg-purple-50 border-purple-200">
+              <p className="text-center text-2xl font-mono font-bold text-purple-900 tracking-wider">
+                {inviteCode}
+              </p>
+            </Card>
+
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteCode);
+                }}
+              >
+                <Icon name="Copy" size={16} className="mr-2" />
+                Скопировать код
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.open(`mailto:?subject=Приглашение в TeamChat&body=Ваш код приглашения: ${inviteCode}`);
+                }}
+              >
+                <Icon name="Mail" size={16} />
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Как это работает:</p>
+              <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+                <li>Скопируйте код приглашения</li>
+                <li>Отправьте его новому сотруднику</li>
+                <li>Сотрудник использует код при регистрации</li>
+              </ol>
+            </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
